@@ -34,6 +34,7 @@ const defaultProducts = [
 ];
 
 let products = JSON.parse(localStorage.getItem("classifiedProducts")) || defaultProducts;
+let selectedProduct = null;
 
 const productGrid = document.getElementById("productGrid");
 const emptyState = document.getElementById("emptyState");
@@ -41,17 +42,37 @@ const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const categoryFilter = document.getElementById("categoryFilter");
 const productForm = document.getElementById("productForm");
+
 const toast = document.getElementById("toast");
 const toastMessage = document.getElementById("toastMessage");
 const closeToast = document.getElementById("closeToast");
 const exploreBtn = document.getElementById("exploreBtn");
+
+const orderModal = document.getElementById("orderModal");
+const closeOrder = document.getElementById("closeOrder");
+const orderForm = document.getElementById("orderForm");
+const selectedProductBox = document.getElementById("selectedProduct");
+
+const orderSuccess = document.getElementById("orderSuccess");
+const orderDetails = document.getElementById("orderDetails");
+const continueShopping = document.getElementById("continueShopping");
 
 function formatPrice(price) {
     return new Intl.NumberFormat("en-IN").format(price);
 }
 
 function saveProducts() {
-    localStorage.setItem("classifiedProducts", JSON.stringify(products));
+    localStorage.setItem(
+        "classifiedProducts",
+        JSON.stringify(products)
+    );
+}
+
+function saveOrders(orders) {
+    localStorage.setItem(
+        "classifiedOrders",
+        JSON.stringify(orders)
+    );
 }
 
 function getFilteredProducts() {
@@ -95,8 +116,15 @@ function renderProducts() {
 
             <div class="product-info">
                 <h3>${product.name}</h3>
-                <p class="condition">${product.condition}</p>
-                <div class="price">₹${formatPrice(product.price)}</div>
+
+                <p class="condition">
+                    ${product.condition}
+                </p>
+
+                <div class="price">
+                    ₹${formatPrice(product.price)}
+                </div>
+
                 <button class="buy-btn" data-id="${product.id}">
                     🛒 Buy Now
                 </button>
@@ -109,15 +137,34 @@ function renderProducts() {
     document.querySelectorAll(".buy-btn").forEach(button => {
         button.addEventListener("click", () => {
             const id = Number(button.dataset.id);
-            const product = products.find(item => item.id === id);
 
-            if (product) {
-                showToast(
-                    `${product.name} selected. Contact the seller to complete the purchase.`
-                );
+            selectedProduct = products.find(
+                product => product.id === id
+            );
+
+            if (selectedProduct) {
+                openOrderForm();
             }
         });
     });
+}
+
+function openOrderForm() {
+    selectedProductBox.innerHTML = `
+        <div>${selectedProduct.name}</div>
+        <strong>₹${formatPrice(selectedProduct.price)}</strong>
+        <div>${selectedProduct.condition}</div>
+    `;
+
+    orderModal.classList.add("show");
+
+    document.getElementById("customerName").focus();
+}
+
+function closeOrderForm() {
+    orderModal.classList.remove("show");
+    orderForm.reset();
+    selectedProduct = null;
 }
 
 function showToast(message) {
@@ -135,10 +182,17 @@ function showToast(message) {
 productForm.addEventListener("submit", event => {
     event.preventDefault();
 
-    const name = document.getElementById("productName").value.trim();
-    const price = Number(document.getElementById("productPrice").value);
-    const condition = document.getElementById("productCondition").value.trim();
-    const image = document.getElementById("productImage").value.trim();
+    const name =
+        document.getElementById("productName").value.trim();
+
+    const price =
+        Number(document.getElementById("productPrice").value);
+
+    const condition =
+        document.getElementById("productCondition").value.trim();
+
+    const image =
+        document.getElementById("productImage").value.trim();
 
     if (!name || !price || price <= 0 || !condition) {
         showToast("Please enter valid product details.");
@@ -157,17 +211,13 @@ productForm.addEventListener("submit", event => {
         productName.includes("tv")
     ) {
         category = "electronics";
-    }
-
-    else if (
+    } else if (
         productName.includes("laptop") ||
         productName.includes("computer") ||
         productName.includes("macbook")
     ) {
         category = "laptop";
-    }
-
-    else if (
+    } else if (
         productName.includes("bike") ||
         productName.includes("bicycle") ||
         productName.includes("cycle") ||
@@ -175,9 +225,7 @@ productForm.addEventListener("submit", event => {
         productName.includes("car")
     ) {
         category = "vehicle";
-    }
-
-    else if (
+    } else if (
         productName.includes("table") ||
         productName.includes("chair") ||
         productName.includes("sofa") ||
@@ -205,6 +253,87 @@ productForm.addEventListener("submit", event => {
     renderProducts();
 
     showToast("Product added for sale successfully!");
+
+    document.getElementById("products").scrollIntoView({
+        behavior: "smooth"
+    });
+});
+
+orderForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    if (!selectedProduct) {
+        return;
+    }
+
+    const customerName =
+        document.getElementById("customerName").value.trim();
+
+    const customerPhone =
+        document.getElementById("customerPhone").value.trim();
+
+    const customerAddress =
+        document.getElementById("customerAddress").value.trim();
+
+    const paymentMethod =
+        document.getElementById("paymentMethod").value;
+
+    if (
+        !customerName ||
+        !customerPhone ||
+        !customerAddress ||
+        !paymentMethod
+    ) {
+        return;
+    }
+
+    const order = {
+        orderId: "ORD" + Date.now(),
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        price: selectedProduct.price,
+        customerName: customerName,
+        phone: customerPhone,
+        address: customerAddress,
+        paymentMethod: paymentMethod,
+        orderDate: new Date().toLocaleString("en-IN"),
+        status: "Order Placed"
+    };
+
+    const orders =
+        JSON.parse(localStorage.getItem("classifiedOrders")) || [];
+
+    orders.push(order);
+
+    saveOrders(orders);
+
+    orderModal.classList.remove("show");
+
+    orderDetails.innerHTML = `
+        <strong>Order ID:</strong> ${order.orderId}<br><br>
+        <strong>Product:</strong> ${order.productName}<br>
+        <strong>Amount:</strong> ₹${formatPrice(order.price)}<br>
+        <strong>Payment:</strong> ${order.paymentMethod}<br><br>
+        Your order has been successfully placed.
+    `;
+
+    orderSuccess.classList.add("show");
+
+    orderForm.reset();
+
+    selectedProduct = null;
+});
+
+closeOrder.addEventListener("click", closeOrderForm);
+
+orderModal.addEventListener("click", event => {
+    if (event.target === orderModal) {
+        closeOrderForm();
+    }
+});
+
+continueShopping.addEventListener("click", () => {
+    orderSuccess.classList.remove("show");
 
     document.getElementById("products").scrollIntoView({
         behavior: "smooth"
