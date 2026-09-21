@@ -1,137 +1,246 @@
-const productsGrid = document.getElementById("productsGrid");
-const searchInput = document.getElementById("searchInput");
-const categorySelect = document.getElementById("categorySelect");
-
-function showNotification(message) {
-    const notification = document.getElementById("notification");
-    const notificationText = document.getElementById("notificationText");
-
-    notificationText.textContent = message;
-    notification.style.display = "flex";
-
-    setTimeout(function () {
-        notification.style.display = "none";
-    }, 3000);
-}
-
-function closeNotification() {
-    document.getElementById("notification").style.display = "none";
-}
-
-function exploreProducts() {
-    document.getElementById("products").scrollIntoView({
-        behavior: "smooth"
-    });
-}
-
-function buyProduct(productName) {
-    showNotification(productName + " added to your cart!");
-}
-
-function searchProducts() {
-    const searchValue = searchInput.value.toLowerCase().trim();
-    const cards = document.querySelectorAll(".product-card");
-
-    cards.forEach(function (card) {
-        const name = card.dataset.name.toLowerCase();
-
-        if (name.includes(searchValue)) {
-            card.classList.remove("hidden");
-        } else {
-            card.classList.add("hidden");
-        }
-    });
-
-    if (searchValue === "") {
-        cards.forEach(function (card) {
-            card.classList.remove("hidden");
-        });
+const defaultProducts = [
+    {
+        id: 1,
+        name: "Samsung Phone",
+        price: 12000,
+        condition: "Good condition",
+        category: "electronics",
+        image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=700&q=80"
+    },
+    {
+        id: 2,
+        name: "HP Laptop",
+        price: 30000,
+        condition: "Used for 1 year",
+        category: "laptop",
+        image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=700&q=80"
+    },
+    {
+        id: 3,
+        name: "Mountain Bicycle",
+        price: 8000,
+        condition: "Good condition",
+        category: "vehicle",
+        image: "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=700&q=80"
+    },
+    {
+        id: 4,
+        name: "Wooden Table",
+        price: 5000,
+        condition: "Lightly used",
+        category: "furniture",
+        image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=700&q=80"
     }
+];
+
+let products = JSON.parse(localStorage.getItem("classifiedProducts")) || defaultProducts;
+
+const productGrid = document.getElementById("productGrid");
+const emptyState = document.getElementById("emptyState");
+const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
+const categoryFilter = document.getElementById("categoryFilter");
+const productForm = document.getElementById("productForm");
+const toast = document.getElementById("toast");
+const toastMessage = document.getElementById("toastMessage");
+const closeToast = document.getElementById("closeToast");
+const exploreBtn = document.getElementById("exploreBtn");
+
+function formatPrice(price) {
+    return new Intl.NumberFormat("en-IN").format(price);
 }
 
-function filterCategory() {
-    const category = categorySelect.value;
-    const cards = document.querySelectorAll(".product-card");
+function saveProducts() {
+    localStorage.setItem("classifiedProducts", JSON.stringify(products));
+}
 
-    cards.forEach(function (card) {
-        if (
+function getFilteredProducts() {
+    const search = searchInput.value.trim().toLowerCase();
+    const category = categoryFilter.value;
+
+    return products.filter(product => {
+        const searchMatch =
+            product.name.toLowerCase().includes(search) ||
+            product.condition.toLowerCase().includes(search);
+
+        const categoryMatch =
             category === "all" ||
-            card.dataset.category === category
-        ) {
-            card.classList.remove("hidden");
-        } else {
-            card.classList.add("hidden");
-        }
+            product.category === category;
+
+        return searchMatch && categoryMatch;
     });
 }
 
-function addProduct() {
-    const name = document.getElementById("productName").value.trim();
-    const price = document.getElementById("productPrice").value.trim();
-    const condition = document.getElementById("productCondition").value.trim();
-    const image = document.getElementById("productImage").value.trim();
+function renderProducts() {
+    const filteredProducts = getFilteredProducts();
 
-    if (name === "" || price === "" || condition === "") {
-        showNotification("Please fill all required fields!");
+    productGrid.innerHTML = "";
+
+    if (filteredProducts.length === 0) {
+        emptyState.classList.add("show");
         return;
     }
 
-    let imageURL = image;
+    emptyState.classList.remove("show");
 
-    if (imageURL === "") {
-        imageURL = "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=600&q=80";
-    }
+    filteredProducts.forEach(product => {
+        const card = document.createElement("article");
 
-    const productCard = document.createElement("div");
+        card.className = "product-card";
 
-    productCard.className = "product-card";
-    productCard.dataset.category = "all";
-    productCard.dataset.name = name;
+        card.innerHTML = `
+            <div class="product-image">
+                <img src="${product.image}" alt="${product.name}">
+            </div>
 
-    productCard.innerHTML = `
-        <img src="${imageURL}" alt="${name}">
+            <div class="product-info">
+                <h3>${product.name}</h3>
+                <p class="condition">${product.condition}</p>
+                <div class="price">₹${formatPrice(product.price)}</div>
+                <button class="buy-btn" data-id="${product.id}">
+                    🛒 Buy Now
+                </button>
+            </div>
+        `;
 
-        <div class="product-info">
+        productGrid.appendChild(card);
+    });
 
-            <h3>${escapeHTML(name)}</h3>
+    document.querySelectorAll(".buy-btn").forEach(button => {
+        button.addEventListener("click", () => {
+            const id = Number(button.dataset.id);
+            const product = products.find(item => item.id === id);
 
-            <p>${escapeHTML(condition)}</p>
-
-            <strong>₹${Number(price).toLocaleString("en-IN")}</strong>
-
-            <button onclick="buyProduct('${escapeHTML(name)}')">
-                <i class="fa-solid fa-cart-shopping"></i>
-                Buy Now
-            </button>
-
-        </div>
-    `;
-
-    productsGrid.appendChild(productCard);
-
-    document.getElementById("productName").value = "";
-    document.getElementById("productPrice").value = "";
-    document.getElementById("productCondition").value = "";
-    document.getElementById("productImage").value = "";
-
-    showNotification(
-        "Product added for sale successfully!"
-    );
-
-    productCard.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
+            if (product) {
+                showToast(
+                    `${product.name} selected. Contact the seller to complete the purchase.`
+                );
+            }
+        });
     });
 }
 
-function escapeHTML(value) {
-    const div = document.createElement("div");
-    div.textContent = value;
-    return div.innerHTML;
+function showToast(message) {
+    toastMessage.textContent = message;
+
+    toast.classList.add("show");
+
+    clearTimeout(window.toastTimer);
+
+    window.toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 4000);
 }
 
-searchInput.addEventListener("keyup", function (event) {
+productForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const name = document.getElementById("productName").value.trim();
+    const price = Number(document.getElementById("productPrice").value);
+    const condition = document.getElementById("productCondition").value.trim();
+    const image = document.getElementById("productImage").value.trim();
+
+    if (!name || !price || price <= 0 || !condition) {
+        showToast("Please enter valid product details.");
+        return;
+    }
+
+    const productName = name.toLowerCase();
+
+    let category = "other";
+
+    if (
+        productName.includes("phone") ||
+        productName.includes("mobile") ||
+        productName.includes("tablet") ||
+        productName.includes("camera") ||
+        productName.includes("tv")
+    ) {
+        category = "electronics";
+    }
+
+    else if (
+        productName.includes("laptop") ||
+        productName.includes("computer") ||
+        productName.includes("macbook")
+    ) {
+        category = "laptop";
+    }
+
+    else if (
+        productName.includes("bike") ||
+        productName.includes("bicycle") ||
+        productName.includes("cycle") ||
+        productName.includes("scooter") ||
+        productName.includes("car")
+    ) {
+        category = "vehicle";
+    }
+
+    else if (
+        productName.includes("table") ||
+        productName.includes("chair") ||
+        productName.includes("sofa") ||
+        productName.includes("bed") ||
+        productName.includes("desk")
+    ) {
+        category = "furniture";
+    }
+
+    const newProduct = {
+        id: Date.now(),
+        name: name,
+        price: price,
+        condition: condition,
+        category: category,
+        image: image || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=80"
+    };
+
+    products.unshift(newProduct);
+
+    saveProducts();
+
+    productForm.reset();
+
+    renderProducts();
+
+    showToast("Product added for sale successfully!");
+
+    document.getElementById("products").scrollIntoView({
+        behavior: "smooth"
+    });
+});
+
+searchBtn.addEventListener("click", renderProducts);
+
+searchInput.addEventListener("input", renderProducts);
+
+searchInput.addEventListener("keydown", event => {
     if (event.key === "Enter") {
-        searchProducts();
+        renderProducts();
     }
 });
+
+categoryFilter.addEventListener("change", renderProducts);
+
+exploreBtn.addEventListener("click", () => {
+    document.getElementById("products").scrollIntoView({
+        behavior: "smooth"
+    });
+});
+
+closeToast.addEventListener("click", () => {
+    toast.classList.remove("show");
+});
+
+document.querySelectorAll("nav a").forEach(link => {
+    link.addEventListener("click", () => {
+        document.querySelectorAll("nav a").forEach(item => {
+            item.classList.remove("active");
+        });
+
+        link.classList.add("active");
+    });
+});
+
+renderProducts();
